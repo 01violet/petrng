@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Luck-Based Pet Hatch Game</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700&display=swap');
+  body {
+    font-family: 'Nunito', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #89d4cf, #6e45e2);
+    color: #222;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    margin-top: 1em;
+    font-size: 3rem;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+  }
+  #game-container {
+    background: #fff;
+    margin: 2em 1em 3em;
+    padding: 1.5em 2em 2em;
+    border-radius: 25px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+  }
+  #button-container {
+    margin-top: 1.8em;
+    display: flex;
+    justify-content: center;
+    gap: 1.2em;
+  }
+  button {
+    background: linear-gradient(45deg, #6e45e2, #89d4cf);
+    border: none;
+    color: white;
+    font-weight: 700;
+    font-size: 1.15rem;
+    padding: 0.9em 2em;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(110,69,226,0.6);
+    transition: all 0.3s ease;
+    user-select: none;
+  }
+  button:hover:not(.active),
+  button:focus:not(.active) {
+    box-shadow: 0 8px 20px rgba(110,69,226,0.9);
+    transform: scale(1.05);
+    outline: none;
+  }
+  button.active {
+    background: linear-gradient(45deg, #1f1155, #4a358f);
+    box-shadow: 0 8px 20px rgba(74,53,143,0.9);
+    transform: scale(1.05);
+  }
+  #pet-display {
+    margin-top: 2em;
+    min-height: 200px;
+  }
+  .pet-card {
+    background: #f7fafc;
+    border-radius: 20px;
+    padding: 1.5em;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    display: inline-block;
+    min-width: 200px;
+    user-select: none;
+  }
+  .pet-rarity {
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin-bottom: 0.6em;
+  }
+  .pet-name {
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin: 0.3em 0 0.8em;
+    color: #3a3a3a;
+  }
+  .pet-type {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 0.7em;
+  }
+  .pet-luck {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #3a3a3a;
+    margin-bottom: 1em;
+  }
+  .pet-graphic {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+  }
+  #collection {
+    margin-top: 3em;
+    max-height: 420px;
+    overflow-y: auto;
+    background: #f9faff;
+    padding: 1.5em 1.5em 2em 1.5em;
+    border-radius: 25px;
+    box-shadow: inset 0 0 15px rgba(110,69,226,0.15);
+    text-align: left;
+  }
+  #collection h2 {
+    margin: 0 0 1.25em 0;
+    font-weight: 700;
+    font-size: 1.9rem;
+    color: #6e45e2;
+    text-align: center;
+  }
+  .collection-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1.3em 1.5em;
+  }
+  .collection-item {
+    position: relative;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 8px 16px rgba(110,69,226,0.15);
+    padding: 10px 10px 12px 10px;
+    text-align: center;
+    user-select: none;
+    cursor: default;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .collection-item:hover,
+  .collection-item:focus {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(110,69,226,0.3);
+    outline: none;
+  }
+  .collection-item .pet-name {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #4a4a4a;
+    margin-bottom: 0.1em;
+  }
+  .collection-item .pet-rarity {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 0.3em 0;
+  }
+  .collection-item .pet-luck {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 0.5em 0;
+    color: #555;
+  }
+  .collection-item .pet-graphic {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 6px;
+  }
+  /* Rarity color codes */
+  .rarity-common {
+    color: #999;
+  }
+  .rarity-uncommon {
+    color: #2e7d32;
+  }
+  .rarity-rare {
+    color: #1565c0;
+  }
+  .rarity-epic {
+    color: #af52bf;
+  }
+  .rarity-legendary {
+    color: #ff6f00;
+  }
+
+  /* Count badge */
+  .count-badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: #6e45e2;
+    color: white;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    box-shadow: 0 0 6px rgba(110, 69, 226, 0.7);
+    user-select: none;
+  }
+
+  /* Scrollbar styles for #collection */
+  #collection::-webkit-scrollbar {
+    width: 10px;
+  }
+  #collection::-webkit-scrollbar-track {
+    background: #eaefff;
+    border-radius: 25px;
+  }
+  #collection::-webkit-scrollbar-thumb {
+    background: #6e45e2;
+    border-radius: 25px;
+  }
+</style>
+</head>
+<body>
+  <h1>Luck-Based Pet Hatch Game</h1>
+  <div id="game-container" role="main" aria-label="Pet hatching game interface">
+    <div id="pet-display" aria-live="polite" aria-atomic="true" aria-relevant="additions"></div>
+    <div id="button-container">
+      <button id="hatch-btn" aria-describedby="rarity-chance-desc">Hatch a Pet</button>
+      <button id="auto-hatch-btn" aria-pressed="false">Auto Hatch: Off</button>
+    </div>
+    <p id="rarity-chance-desc" style="font-size: 0.9rem; margin-top: 1em; color: #555;">
+      Click the button to hatch a unique pet! Pet rarity is random with different chances.
+    </p>
+
+    <section id="collection" aria-label="Your pet collection">
+      <h2>Your Collection</h2>
+      <div class="collection-list" id="collection-list" tabindex="0" aria-live="polite" aria-atomic="true"></div>
+      <p id="empty-collection" style="color:#888; text-align:center;">No pets hatched yet, hatch to collect!</p>
+    </section>
+  </div>
+
+<script>
+(() => {
+  const hatchBtn = document.getElementById('hatch-btn');
+  const autoHatchBtn = document.getElementById('auto-hatch-btn');
+  const petDisplay = document.getElementById('pet-display');
+  const collectionList = document.getElementById('collection-list');
+  const emptyCollection = document.getElementById('empty-collection');
+
+  const rarities = [
+    { name: 'Legendary', chance: 10, className: 'rarity-legendary' },
+    { name: 'Epic', chance: 40, className: 'rarity-epic' },
+    { name: 'Rare', chance: 150, className: 'rarity-rare' },
+    { name: 'Uncommon', chance: 300, className: 'rarity-uncommon' },
+    { name: 'Common', chance: 500, className: 'rarity-common' },
+  ];
+
+  const pets = {
+    Legendary: [
+      { name: 'Phoenix', type: 'Firebird', color: '#ff4500', design: 1 },
+      { name: 'Dragon', type: 'Mythical', color: '#bb1333', design: 2 },
+      { name: 'Unicorn', type: 'Mythical', color: '#ff69b4', design: 3 },
+      { name: 'Celestial Wolf', type: 'Spirit', color: '#d4af37', design: 4 },
+      { name: 'Golden Tiger', type: 'Beast', color: '#f0c934', design: 1 },
+    ],
+    Epic: [
+      { name: 'Griffin', type: 'Mythical', color: '#6b5b95', design: 2 },
+      { name: 'Leviathan', type: 'Sea Beast', color: '#0f4c75', design: 3 },
+      { name: 'Pegasus', type: 'Winged Horse', color: '#8e44ad', design: 4 },
+      { name: 'Crystal Bear', type: 'Beast', color: '#5dade2', design: 1 },
+      { name: 'Shadow Panther', type: 'Beast', color: '#2c3e50', design: 2 },
+    ],
+    Rare: [
+      { name: 'Fox', type: 'Mammal', color: '#d35400', design: 3 },
+      { name: 'Owl', type: 'Bird', color: '#f39c12', design: 4 },
+      { name: 'Turtle', type: 'Reptile', color: '#27ae60', design: 1 },
+      { name: 'Hummingbird', type: 'Bird', color: '#16a085', design: 2 },
+      { name: 'Raccoon', type: 'Mammal', color: '#7f8c8d', design: 3 },
+    ],
+    Uncommon: [
+      { name: 'Rabbit', type: 'Mammal', color: '#ecf0f1', design: 4 },
+      { name: 'Frog', type: 'Amphibian', color: '#27ae60', design: 1 },
+      { name: 'Parrot', type: 'Bird', color: '#2980b9', design: 2 },
+      { name: 'Squirrel', type: 'Mammal', color: '#d35400', design: 3 },
+      { name: 'Goldfish', type: 'Fish', color: '#f1c40f', design: 4 },
+    ],
+    Common: [
+      { name: 'Cat', type: 'Mammal', color: '#95a5a6', design: 1 },
+      { name: 'Dog', type: 'Mammal', color: '#7f8c8d', design: 2 },
+      { name: 'Goldfish', type: 'Fish', color: '#f1c40f', design: 3 },
+      { name: 'Mouse', type: 'Mammal', color: '#bcc6cc', design: 4 },
+      { name: 'Pigeon', type: 'Bird', color: '#bdc3c7', design: 1 },
+    ]
+  };
+
+  // Collection keyed by rarity + name to stack pets
+  const collection = {};
+
+  function getRandomRarity() {
+    const roll = Math.floor(Math.random() * 1000) + 1;
+    let sum = 0;
+    for (const rarity of rarities) {
+      sum += rarity.chance;
+      if (roll <= sum) return rarity;
+    }
+    return rarities[rarities.length - 1];
+  }
+
+  function getRandomLuck() {
+    return Math.floor(Math.random() * 100) + 1; // 1 - 100
+  }
+
+  function createPetGraphic(color, design, size = 120) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'pet-graphic');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size);
+    svg.setAttribute('viewBox', '0 0 120 120');
+
+    switch (design) {
+      case 1:
+        {
+          const body = document.createElementNS(svgNS, 'circle');
+          body.setAttribute('cx', '60');
+          body.setAttribute('cy', '60');
+          body.setAttribute('r', '40');
+          body.setAttribute('fill', color);
+          body.setAttribute('stroke', '#333');
+          body.setAttribute('stroke-width', '3');
+          svg.appendChild(body);
+
+          const ear1 = document.createElementNS(svgNS, 'polygon');
+          ear1.setAttribute('points', '25,30 40,15 45,40');
+          ear1.setAttribute('fill', color);
+          ear1.setAttribute('stroke', '#333');
+          ear1.setAttribute('stroke-width', '2');
+          svg.appendChild(ear1);
+
+          const ear2 = document.createElementNS(svgNS, 'polygon');
+          ear2.setAttribute('points', '95,30 80,15 75,40');
+          ear2.setAttribute('fill', color);
+          ear2.setAttribute('stroke', '#333');
+          ear2.setAttribute('stroke-width', '2');
+          svg.appendChild(ear2);
+
+          const eye1 = document.createElementNS(svgNS, 'circle');
+          eye1.setAttribute('cx', '45');
+          eye1.setAttribute('cy', '65');
+          eye1.setAttribute('r', '8');
+          eye1.setAttribute('fill', '#fff');
+          svg.appendChild(eye1);
+          const pupil1 = document.createElementNS(svgNS, 'circle');
+          pupil1.setAttribute('cx', '45');
+          pupil1.setAttribute('cy', '65');
+          pupil1.setAttribute('r', '4');
+          pupil1.setAttribute('fill', '#333');
+          svg.appendChild(pupil1);
+
+          const eye2 = document.createElementNS(svgNS, 'circle');
+          eye2.setAttribute('cx', '75');
+          eye2.setAttribute('cy', '65');
+          eye2.setAttribute('r', '8');
+          eye2.setAttribute('fill', '#fff');
+          svg.appendChild(eye2);
+          const pupil2 = document.createElementNS(svgNS, 'circle');
+          pupil2.setAttribute('cx', '75');
+          pupil2.setAttribute('cy', '65');
+          pupil2.setAttribute('r', '4');
+          pupil2.setAttribute('fill', '#333');
+          svg.appendChild(pupil2);
+
+          const tail = document.createElementNS(svgNS, 'path');
+          tail.setAttribute('d', 'M 100 75 Q 130 70 118 90 Q 126 110 100 100');
+          tail.setAttribute('fill', color);
+          tail.setAttribute('stroke', '#333');
+          tail.setAttribute('stroke-width', '3');
+          svg.appendChild(tail);
+        }
+        break;
+
+      case 2:
+        {
+          const body = document.createElementNS(svgNS, 'rect');
+          body.setAttribute('x', '30');
+          body.setAttribute('y', '40');
+          body.setAttribute('width', '60');
+          body.setAttribute('height', '60');
+          body.setAttribute('rx', '15');
+          body.setAttribute('fill', color);
+          body.setAttribute('stroke', '#333');
+          body.setAttribute('stroke-width', '3');
+          svg.appendChild(body);
+
+          const horn = document.createElementNS(svgNS, 'polygon');
+          horn.setAttribute('points', '60,10 70,40 50,40');
+          horn.setAttribute('fill', '#ffd700');
+          horn.setAttribute('stroke', '#b8860b');
+          horn.setAttribute('stroke-width', '2');
+          svg.appendChild(horn);
+
+          const eye1 = document.createElementNS(svgNS, 'circle');
+          eye1.setAttribute('cx', '45');
+          eye1.setAttribute('cy', '70');
+          eye1.setAttribute('r', '7');
+          eye1.setAttribute('fill', '#fff');
+          svg.appendChild(eye1);
+          const pupil1 = document.createElementNS(svgNS, 'circle');
+          pupil1.setAttribute('cx', '45');
+          pupil1.setAttribute('cy', '70');
+          pupil1.setAttribute('r', '3.5');
+          pupil1.setAttribute('fill', '#333');
+          svg.appendChild(pupil1);
+
+          const eye2 = document.createElementNS(svgNS, 'circle');
+          eye2.setAttribute('cx', '75');
+          eye2.setAttribute('cy', '70');
+          eye2.setAttribute('r', '7');
+          eye2.setAttribute('fill', '#fff');
+          svg.appendChild(eye2);
+          const pupil2 = document.createElementNS(svgNS, 'circle');
+          pupil2.setAttribute('cx', '75');
+          pupil2.setAttribute('cy', '70');
+          pupil2.setAttribute('r', '3.5');
+          pupil2.setAttribute('fill', '#333');
+          svg.appendChild(pupil2);
+        }
+        break;
+
+      case 3:
+        {
+          const body = document.createElementNS(svgNS, 'path');
+          body.setAttribute('d', 'M60 20 L100 90 Q60 110 20 90 Z');
+          body.setAttribute('fill', color);
+          body.setAttribute('stroke', '#333');
+          body.setAttribute('stroke-width', '3');
+          svg.appendChild(body);
+
+          const wing1 = document.createElementNS(svgNS, 'ellipse');
+          wing1.setAttribute('cx', '85');
+          wing1.setAttribute('cy', '70');
+          wing1.setAttribute('rx', '10');
+          wing1.setAttribute('ry', '25');
+          wing1.setAttribute('fill', '#ddd');
+          wing1.setAttribute('opacity', '0.8');
+          svg.appendChild(wing1);
+
+          const wing2 = document.createElementNS(svgNS, 'ellipse');
+          wing2.setAttribute('cx', '35');
+          wing2.setAttribute('cy', '70');
+          wing2.setAttribute('rx', '10');
+          wing2.setAttribute('ry', '25');
+          wing2.setAttribute('fill', '#ddd');
+          wing2.setAttribute('opacity', '0.8');
+          svg.appendChild(wing2);
+
+          const eye1 = document.createElementNS(svgNS, 'circle');
+          eye1.setAttribute('cx', '45');
+          eye1.setAttribute('cy', '60');
+          eye1.setAttribute('r', '8');
+          eye1.setAttribute('fill', '#fff');
+          svg.appendChild(eye1);
+          const pupil1 = document.createElementNS(svgNS, 'circle');
+          pupil1.setAttribute('cx', '45');
+          pupil1.setAttribute('cy', '60');
+          pupil1.setAttribute('r', '3.5');
+          pupil1.setAttribute('fill', '#333');
+          svg.appendChild(pupil1);
+
+          const eye2 = document.createElementNS(svgNS, 'circle');
+          eye2.setAttribute('cx', '75');
+          eye2.setAttribute('cy', '60');
+          eye2.setAttribute('r', '8');
+          eye2.setAttribute('fill', '#fff');
+          svg.appendChild(eye2);
+          const pupil2 = document.createElementNS(svgNS, 'circle');
+          pupil2.setAttribute('cx', '75');
+          pupil2.setAttribute('cy', '60');
+          pupil2.setAttribute('r', '3.5');
+          pupil2.setAttribute('fill', '#333');
+          svg.appendChild(pupil2);
+        }
+        break;
+
+      case 4:
+        {
+          const body = document.createElementNS(svgNS, 'ellipse');
+          body.setAttribute('cx', '60');
+          body.setAttribute('cy', '70');
+          body.setAttribute('rx', '40');
+          body.setAttribute('ry', '30');
+          body.setAttribute('fill', color);
+          body.setAttribute('stroke', '#333');
+          body.setAttribute('stroke-width', '3');
+          svg.appendChild(body);
+
+          for(let i=0; i < 3; i++) {
+            const stripe = document.createElementNS(svgNS, 'line');
+            stripe.setAttribute('x1', 40 + i*15);
+            stripe.setAttribute('y1', 55);
+            stripe.setAttribute('x2', 40 + i*15);
+            stripe.setAttribute('y2', 85);
+            stripe.setAttribute('stroke', '#333');
+            stripe.setAttribute('stroke-width', '4');
+            stripe.setAttribute('stroke-linecap', 'round');
+            stripe.setAttribute('opacity', '0.5');
+            svg.appendChild(stripe);
+          }
+
+          const tail = document.createElementNS(svgNS, 'path');
+          tail.setAttribute('d', 'M 90 85 Q 115 95 105 115');
+          tail.setAttribute('fill', 'none');
+          tail.setAttribute('stroke', '#333');
+          tail.setAttribute('stroke-width', '6');
+          tail.setAttribute('stroke-linecap', 'round');
+          svg.appendChild(tail);
+
+          const eye1 = document.createElementNS(svgNS, 'circle');
+          eye1.setAttribute('cx', '45');
+          eye1.setAttribute('cy', '65');
+          eye1.setAttribute('r', '8');
+          eye1.setAttribute('fill', '#fff');
+          svg.appendChild(eye1);
+          const pupil1 = document.createElementNS(svgNS, 'circle');
+          pupil1.setAttribute('cx', '45');
+          pupil1.setAttribute('cy', '65');
+          pupil1.setAttribute('r', '3.5');
+          pupil1.setAttribute('fill', '#333');
+          svg.appendChild(pupil1);
+
+          const eye2 = document.createElementNS(svgNS, 'circle');
+          eye2.setAttribute('cx', '75');
+          eye2.setAttribute('cy', '65');
+          eye2.setAttribute('r', '8');
+          eye2.setAttribute('fill', '#fff');
+          svg.appendChild(eye2);
+          const pupil2 = document.createElementNS(svgNS, 'circle');
+          pupil2.setAttribute('cx', '75');
+          pupil2.setAttribute('cy', '65');
+          pupil2.setAttribute('r', '3.5');
+          pupil2.setAttribute('fill', '#333');
+          svg.appendChild(pupil2);
+        }
+        break;
+
+      default:
+        {
+          const body = document.createElementNS(svgNS, 'circle');
+          body.setAttribute('cx', '60');
+          body.setAttribute('cy', '60');
+          body.setAttribute('r', '40');
+          body.setAttribute('fill', color);
+          body.setAttribute('stroke', '#333');
+          body.setAttribute('stroke-width', '3');
+          svg.appendChild(body);
+        }
+        break;
+    }
+    return svg;
+  }
+
+  function createPetCard(pet, rarityClass, luck) {
+    const card = document.createElement('div');
+    card.classList.add('pet-card');
+
+    const rarityLabel = document.createElement('div');
+    rarityLabel.classList.add('pet-rarity', rarityClass);
+    rarityLabel.textContent = pet.rarity;
+    card.appendChild(rarityLabel);
+
+    const petName = document.createElement('div');
+    petName.classList.add('pet-name');
+    petName.textContent = pet.name;
+    card.appendChild(petName);
+
+    const petType = document.createElement('div');
+    petType.classList.add('pet-type');
+    petType.textContent = pet.type;
+    card.appendChild(petType);
+
+    const petLuck = document.createElement('div');
+    petLuck.classList.add('pet-luck');
+    petLuck.textContent = `Luck: ${luck}`;
+    card.appendChild(petLuck);
+
+    const graphic = createPetGraphic(pet.color, pet.design);
+    card.appendChild(graphic);
+
+    return card;
+  }
+
+  function renderCollection() {
+    collectionList.innerHTML = '';
+    const keys = Object.keys(collection);
+    if (keys.length === 0) {
+      emptyCollection.style.display = '';
+      return;
+    }
+    emptyCollection.style.display = 'none';
+
+    for (const key of keys) {
+      const petEntry = collection[key];
+      const { pet, count, averageLuck } = petEntry;
+
+      const item = document.createElement('div');
+      item.classList.add('collection-item');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('title', `${pet.name} (${pet.type}) - ${pet.rarity} [${count} owned, Avg Luck: ${averageLuck}]`);
+
+      const graphic = createPetGraphic(pet.color, pet.design, 80);
+      item.appendChild(graphic);
+
+      const nameEl = document.createElement('div');
+      nameEl.classList.add('pet-name');
+      nameEl.textContent = pet.name;
+      item.appendChild(nameEl);
+
+      const rarityEl = document.createElement('div');
+      rarityEl.classList.add('pet-rarity', pet.rarityClass);
+      rarityEl.textContent = pet.rarity;
+      item.appendChild(rarityEl);
+
+      const luckEl = document.createElement('div');
+      luckEl.classList.add('pet-luck');
+      luckEl.textContent = `Luck: ${averageLuck}`;
+      item.appendChild(luckEl);
+
+      if (count > 1) {
+        const countBadge = document.createElement('div');
+        countBadge.classList.add('count-badge');
+        countBadge.textContent = count;
+        item.appendChild(countBadge);
+      }
+
+      collectionList.appendChild(item);
+    }
+  }
+
+  function hatchPet() {
+    const rarity = getRandomRarity();
+    const petList = pets[rarity.name];
+    const chosenPet = petList[Math.floor(Math.random() * petList.length)];
+
+    const luck = getRandomLuck();
+
+    const pet = {
+      name: chosenPet.name,
+      type: chosenPet.type,
+      color: chosenPet.color,
+      rarity: rarity.name,
+      rarityClass: rarity.className,
+      design: chosenPet.design
+    };
+
+    const key = pet.rarity + '|' + pet.name;
+
+    if (collection[key]) {
+      // Update count and average luck
+      const entry = collection[key];
+      entry.count++;
+      entry.averageLuck = Math.round(((entry.averageLuck * (entry.count - 1)) + luck) / entry.count);
+    } else {
+      collection[key] = { pet, count: 1, averageLuck: luck };
+    }
+
+    petDisplay.innerHTML = '';
+    const petCard = createPetCard(pet, pet.rarityClass, luck);
+    petDisplay.appendChild(petCard);
+
+    renderCollection();
+  }
+
+  let autoHatchInterval = null;
+
+  hatchBtn.addEventListener('click', () => {
+    hatchPet();
+  });
+
+  autoHatchBtn.addEventListener('click', () => {
+    if (autoHatchInterval) {
+      clearInterval(autoHatchInterval);
+      autoHatchInterval = null;
+      autoHatchBtn.textContent = 'Auto Hatch: Off';
+      autoHatchBtn.classList.remove('active');
+      autoHatchBtn.setAttribute('aria-pressed', 'false');
+      hatchBtn.disabled = false;
+    } else {
+      autoHatchInterval = setInterval(hatchPet, 1000);
+      autoHatchBtn.textContent = 'Auto Hatch: On';
+      autoHatchBtn.classList.add('active');
+      autoHatchBtn.setAttribute('aria-pressed', 'true');
+      hatchBtn.disabled = true;
+    }
+  });
+})();
+</script>
+</body>
+</html>
